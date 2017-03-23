@@ -1,11 +1,11 @@
 
 
-## h1 1
+## h1 
 Natalie Marcom's Portfolio
 
 ---------
 
-## h3 
+## 
 My  emphasis in statistics has been in data analysis, with a focus on geography. I  are interested in GIS data analysis, and geostatistics regarding urban populations. I am proficient in R, Python, ArcGIS, and QGIS. I am currently an undergrate in Statistics and intend to get my MS in Geography.
 
 -------
