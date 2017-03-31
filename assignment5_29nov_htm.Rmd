@@ -1,0 +1,643 @@
+
+
+---
+title: "STA 141 Assignment 5"
+author: "Natalie Marcom"
+date: "November 24, 2015"
+output:
+  word_document: default
+  html_document:
+    fig_caption: yes
+    keep_md: yes
+    theme: united
+---
+
+### Problem 1: How many actors are there in the database? How many movies? ###
+
+For this problem, I found number of actors and actresses two ways:
+The first time I used id from role_type and used UNION to join all names from the name table. In the role_id, I called only for ids that were either a 1 or a 2 because those are the ids of female and male actors.
+
+I'm really weary of cast_info because it takes too long to run and it has crashed my computer many times. While I tried to create a table for actors and I used ids from cast_info, My computer crashed and I had to restart it twice.
+
+The first table I created combined the `cast_info role ids` with the` role_type ids`, and only used 1 or 2, (female and male actors) from each id column from those two tables. It took about 10 minutes to run, but I only had to run it once for it to be forever saved in my information. 
+
+
+the imdb_old table combined the ids from role_type and names (role ids only calling for 1 or 2, so male and female actors). This made it easier for me to count the names of actors, or how many actors there are in the database. There really was no need to do this tho, because the number of observations given in the global environment is the same as when I used a command to count the output from the table that I created.
+
+{EDIT}!: I went back with the new lean, idx data and re-counted all my actors. My frist step was, I created a command with several inner joins that connected the cast_info2, name2, title2, and role_type tables together, in order to pull out actors of both sexes and count them. In order to make sure they were film actors, I selected kind_id='1' from the title2 table, because kind_id=1, calls only for movies. I connected columns from tabels that ahd equal columns, like id from title2 is equal to the movie_id column from cast_info2 table, and person_id from cast_info is equal to the id column from the name2 table.
+
+After I created a temporary table with all this information, I then called for the counts of all the names from the temporary table. I could have done all of this in the same query, but have all my inner joins as a subquery, but this got kind of messy. I previously had created several tables and got a bunch of different results with my counts.
+
+
+
+```{r,cache=TRUE}
+setwd("E:/Fall 2015/141/Assignment 5")
+library(RSQLite)
+
+imdb_new = dbConnect(SQLite(), dbname = "E:/Fall 2015/141/Assignment 5/lean_imdbpy_2010_idx.db")
+
+
+
+ #create a temporary table of all actors from both sexes.
+#I emphasis the kind_id=1 value to make sure they are film actors
+#I connect tables with equal columns 
+
+dbGetQuery(imdb_new, "CREATE TEMPORARY TABLE count_actors AS
+SELECT n.name AS count FROM title2 AS t 
+INNER JOIN cast_info2 AS c ON c.movie_id=t.id
+INNER JOIN name2 AS n ON c.person_id=n.id
+INNER JOIN role_type AS r ON c.role_id=r.id
+WHERE kind_id=1 AND (r.role='actor' OR r.role='actress') ")
+
+
+
+#in a separate query (thgis is just easier for me and saved me time) I count all the names from my
+#temporary table
+
+dbGetQuery(imdb_new, "SELECT COUNT (distinct count) FROM count_actors")
+#1030151 distinct names
+
+```
+
+
+For the movies, I originally tried the `aka_titles` table, but the amount I got was very small, and something felt off with the number I got back, so I tried the `title` table and I got more results and this felt like better results to me. As someone who has used IMDB for over 10 years, getting back only 300k titles with `aka_titles` seemed very off to me.
+
+I used the 8 tables reduced database for this problem.
+
+```{r}
+
+
+setwd("E:/Fall 2015/141/Assignment 5")
+library(RSQLite)
+
+imdb = dbConnect(SQLite(), dbname = "E:/Fall 2015/141/Assignment 5/lean_imdbpy.db")
+
+
+movi3es <- dbGetQuery(imdb, "SELECT COUNT(title) total_movies FROM title where kind_id='1'")
+movi3es
+
+#878800 total movies in the database
+```
+
+
+----
+
+###2: What time period does the database cover?###
+
+I called for the MIN , the earliest year recorded in the `production_year` column from the title table, and I also called for the MAX or latest year recorded in the `production_year` column from the title table. I then looked up the film from 1974 and 2025 as a means of exploring the data further.
+
+When using the `aka_title` column, I noticed that the MAX year was slightly different, I believe it was 2022 and not 2025.
+
+I also thought the oldest film  would be 'the great train robbery'.
+
+Lean 8 tables reduced database was used for this problem.
+
+```{r}
+setwd("E:/Fall 2015/141/Assignment 5")
+library(RSQLite)
+
+imdb = dbConnect(SQLite(), dbname = "E:/Fall 2015/141/Assignment 5/lean_imdbpy.db")
+
+years_fun <- dbGetQuery(imdb, "SELECT MIN(production_year), MAX(production_year) FROM title")
+
+years_fun
+
+
+#which movie is from 1874? and 2025?
+
+dbGetQuery(imdb, "select production_year,id,title from title where production_year='1874' ")
+
+#which movie is from 2025?
+
+dbGetQuery(imdb, "select production_year,id,title from title where production_year='2025';")
+
+
+
+```
+
+
+----
+
+###Problem 3: What proportion of the actors are female? male? ###
+
+For this I used piazza and a google search and after several attempts, managed to find an example that would work with the `cast_info`, specifically role_id column.
+
+I did combine the `cast_info` role_ids with names, as a new table, but I had issues trying to get proportions of it out. I would like to in the future figure out a way to create a table, where at the same time too,  create a column in the new table that I am creating/. I am sure there is a way to do this, but as of yet I have not figured that out.
+
+The proportion I got back from the `cast_info` table:
+
+There are 33.6% male actors and 20% female actors
+
+I used the 8 table reduced database for this problem.
+
+```{r,cache=TRUE}
+
+gender_proportion<-dbGetQuery(imdb, "Select role_id, (Count(role_id)* 100.0 / (Select Count(*) From cast_info)) as Gender
+From cast_info
+WHERE role_id ='1' or role_id = '2'
+Group By role_id")
+
+gender_proportion
+
+
+#where 1 is male actor and 2 is female actor.
+#There are 33.6% male actors and 20% female actors
+
+
+```
+
+----
+
+###: 4.What proportion of the entries in the movies table are actual movies and what proportion are television series, etc.? ###
+
+<s>Using the 8 tables reduced dataset</s>, I changed this to the indexed dataset, I based this problem of the code that I found off some website that worked for problem 3 for this problem. The only real difference here is that there are MANY `WHERE` arguements. The only definitions that I know of, of any of these kind_id variables is that
+`kind_id='1' are movies, and kind_id='7' are tv-shows. Anything between 2-6 I am not sure of, because I couldn't find any column that defiend what all of these different 'kinds of media' are.
+
+In the new dataset, there are only 4 different media types. The only one I am sure of, is '1' which is movies. In the new database, the breakdown is the following:
+
+1. 81% movies
+2. 11.8% of unknown media
+3. 6.4% of unknown media 2
+6. 0.8 % of unknown media form 3
+
+
+```{r,cache=TRUE}
+setwd("E:/Fall 2015/141/Assignment 5")
+imdb_new = dbConnect(SQLite(), dbname = "E:/Fall 2015/141/Assignment 5/lean_imdbpy_2010_idx.db")
+library(RSQLite)
+
+kind_test<-dbGetQuery(imdb_new, "SELECT kind_id, 
+(COUNT(kind_id)* 100.0 / (SELECT COUNT(*) FROM title2)) AS Proportion
+FROM title2
+WHERE kind_id ='1' OR kind_id = '2' 
+OR kind_id ='3' OR kind_id='4' 
+OR kind_id='5' OR kind_id='6' OR kind_id='7'
+GROUP BY kind_id")
+
+kind_test
+
+```
+
+---
+
+### 5: How many genres are there? What are their names/descriptions? ###
+
+For this problem, I was advised by someone to use the old data (first data given to us), and I ended up going with that. I tried to use the new database, which is used for the rest of the assignment, but I had a difficulty  figuring out the columns for both of the tables that I needed. When I managed to join everything together (the 2 tables and several columns with my new data), my genre output was simply "alternative version" for every single movie post output. I then switched to the old database, and managed to get it working in way less time that the hours I spent trying to make the new database work 8)
+
+I however, can't figure out besides the given name, the descriptions for the genre. I feel that their name (genre) is enough? Movie genre can get complicated, but when one thinks about a device like Tivo and searching for genres, or on a cable guide, the genre listings are quite simple and nothing is too complicated. It's only when users on IMDB add genre suggestions that things can get very complicated and messy.
+
+Used old database for this.
+
+```{r}
+setwd("E:/Fall 2015/141/Assignment 5")
+library(RSQLite)
+imdb_old = dbConnect(SQLite(), dbname = "E:/Fall 2015/141/Assignment 5/imdb_data.txt")
+dbGetQuery(imdb_old, "select genre,idgenres from genres")
+
+#there are 32 genres
+
+
+#set the limit at 25 for just output sake (and to save paper)
+#another version is below, with a difference being that it is grouped by genres
+
+genre_test<-dbGetQuery(imdb_old, "SELECT genres.genre,genres.idgenres,movies_genres.idmovies_genres,movies_genres.idgenres
+FROM genres
+INNER JOIN movies_genres
+ON movies_genres.idgenres=genres.idgenres
+limit 25;")
+
+genre_test_output<-dbGetQuery(imdb_old, "SELECT genres.genre,genres.idgenres,movies_genres.idmovies_genres,movies_genres.idgenres
+FROM genres
+INNER JOIN movies_genres
+ON movies_genres.idgenres=genres.idgenres
+GROUP BY movies_genres.idmovies_genres;")
+
+
+
+```
+
+---
+
+### 6: List the 10 most common genres of movies, showing the number of movies in each category###
+
+I used the old data (first data given to us for this problem)
+This one took me a while. I imdb_oldtinued to use the old IMDB database because I found it faster to work with and it was easier to use. It was after looking at the piazza posts that I relised that I may have accidently done problem 6 in problem 5, but I didn't get the amount of films per movie genre, or list them out as a rank with the top 10 film genres, so it wasn't exactly solved in 5, but it gave me an idea of what I needed to do. In addition, I kind of knew what columns I should focus on with problem 6, with what I had done with problem 5.
+
+For problem 6, I ended up using another JOIN command, this time LEFT JOIN instead of inner join which was used for problem 5. In my LEFT JOIN command, I used a aggregate(?) function, to specifically count one specific column from a table. This column was the `idgenres` column from the `movies_genres` table. I basically copied an example from ws3, where it was showing how to output the rank of a specific column. Obviously I was trying to output the rank of the top 10 movies genres, so I tested this to see if it would work. 
+
+It took a little while, may be like 40 minutes because I had to different outputs depending on what I set two tables and columns equal to with my `ON` arguement within my command. Some responses gave me back `NA`, some gave me back 28 genres instead of 32 etc etc.
+
+In all honestly, I was kind of imdb_oldfused with my final output because I didn't understand that movies_genre.idgenres, which I had declared as my `RankOfGenre`, was actually the number of movies corresponding to that specific genre. I thought it was a movie ID or something, I didn't really get what those numbers corresponded to or signified. I then looked up another website to see how I can order by descending or ascending order, because as I realised `RankOfGenre` gave me back the total number of films for that genre, it was not in order from highest to lowest. I then added an arguement to `ORDER BY RankOfGenre desc`, and set the limit to 10 (limit has really saved my computer with this assignment in testing columns etc), and I got my answer for problem 6.
+
+Also, I am also kind of imdb_oldfused as to how many Documentaries there are.
+
+I also cleaned the data. I removed obvious TV programmes: news, reality, music, game, sports.
+This could be cleaned up further, for example `action` and `adventure` typically are one genre?
+
+
+`Source`: http://www.plus2net.com/sql_tutorial/sql_order_by.php
+
+Used the original (old) database for this problem
+
+```{r}
+setwd("E:/Fall 2015/141/Assignment 5")
+library(RSQLite)
+imdb_old = dbConnect(SQLite(), dbname = "E:/Fall 2015/141/Assignment 5/imdb_data.txt")
+
+dbGetQuery(imdb_old,"SELECT genres.idgenres,genres.genre,COUNT(movies_genres.idgenres) AS RankOfGenre FROM movies_genres
+LEFT JOIN genres
+ON movies_genres.idgenres=genres.idgenres
+WHERE genres.idgenres !=2 and (genres.idgenres !=7) 
+and (genres.idgenres !=17) and (genres.idgenres !=16) 
+and (genres.idgenres!=9) and (genres.idgenres!=10)
+GROUP BY genres.idgenres 
+ORDER BY RankOfGenre desc
+limit 10")
+
+```
+
+-----
+
+###Problem 7: Find all the movies with the keyword 'space'. How many are there? What are the years these were released? and who were the top 5 actors in each of these movies?###
+
+First I counted the number of `titles` with the keyword space, using the new indexed database.I wasn't sure if this meant films with the word space in it, or movies with blank spaces in the title,so I did both just to be safe. I used the new index data for this problem.
+
+I created a table of titles along with production year conisting of titles with blank spaces in the title,
+and I also created a table conisting of titles with the keyword space.
+
+I then created a separate temporary table with nr_order of actors, the name2.id as well as cast_info2.person_id, 
+where in that table I ordered by nr_order by billing.
+
+<s>I then inner joined names, id, nr_order from my new table called `billing_position2`, and inenr joined it with my table entitled `table_bs` , which consists of titles with blank spaces in them. I repeated the same process with titles with the keyword spaces.
+
+I was able to get outputs up to my creation of the billing_position2 table. After this, R would just run forever, so I am not 100% sure if the combined tables work or not. I'm using rmarkdown and I cannot run this copde in my snippet so I will  include it here</s>:
+
+After many failed attempts, and what seemed like SQL infinite loops whenever I tried to code this problem, I managed to get an output of 5 actors from films with the keyword 'space', alongside the year, the actors' name and the production year. 
+
+I used the new indexed database for this problem.
+ My coniditions for my where are as follows:
+ 
+ 1) nr_order must be below 6, but some 0's come back so I conditioned it to be greater than 0 and less than 6.
+ 
+ 2) I set columns from different tables equal to each other
+ 
+ 3) kind_id='1' in order to pull from movies only.
+ 
+ 4) `like '%space%', basically a type of regular expression for SQL, I am trying to find items with the keyword 'space' in them.
+ 
+ 5) `GROUP BY` nr_order, title, name, production_year: all items that I want and are asked by us in the problem 7 description.
+
+
+Used new indexed database for this problem.
+
+```{r,cache=TRUE,eval=FALSE}
+library(RSQLite)
+setwd("E:/Fall 2015/141/Assignment 5")
+library(RSQLite)
+
+imdb_new = dbConnect(SQLite(), dbname = "E:/Fall 2015/141/Assignment 5/lean_imdbpy_2010_idx.db")
+library(RSQLite)
+
+#output and counting of the films with the keyword 'space' as well as blank space:
+
+#Blank space titles:
+dbGetQuery(imdb_new, "SELECT COUNT(DISTINCT title) FROM title2 WHERE kind_id = '1' AND title like '%''%'")
+
+#titles with the keyword 'space':
+dbGetQuery(imdb_new, "SELECT COUNT(DISTINCT title) FROM title2 WHERE kind_id = '1' AND title like '%space%'")
+
+dbGetQuery(imdb_new,"SELECT name, nr_order, production_year,title 
+FROM title2, cast_info2, name2
+WHERE cast_info2.movie_id=title2.id AND cast_info2.person_id=name2.id AND 
+title2.kind_id='1' AND title2.title like '%space%' 
+AND cast_info2.nr_order>0 AND cast_info2.nr_order<6
+GROUP BY nr_order, title, name, production_year
+LIMIT 5;")
+
+```
+
+---
+
+
+```
+
+---
+
+###Problem 9: Who are the actors that have been in the most movies? List the top 20###
+
+Ok. I used the names2, cast_info and title2 tables, attached where these three tables had intersections (connected them at WHERE).I then grouped everything them by name, which somehow listed everyone by last name and not first name? I then listed the top 20 ny setting my limit to 20. None of the names are familiar to me.
+
+SQL:
+
+```{r,cache=TRUE}
+setwd("E:/Fall 2015/141/Assignment 5")
+library(RSQLite)
+
+imdb_new = dbConnect(SQLite(), dbname = "E:/Fall 2015/141/Assignment 5/lean_imdbpy_2010_idx.db")
+library(RSQLite)
+
+top20<-dbGetQuery(imdb_new, "SELECT DISTINCT(name), COUNT(name) 
+FROM name2, cast_info2, title2 
+WHERE title2.kind_id = '1' AND cast_info2.movie_id = title2.id 
+AND cast_info2.person_id = name2.id 
+GROUP BY name 
+ORDER BY COUNT(name) DESC LIMIT 20;")
+```
+
+---
+
+in r:
+ummm. I tried.
+My computer hates me.
+
+First I took the trhee tables titles2, cast_info2, names2 and i used readtables to read each of these three tables and exported them as data.frames.
+I then took the plyr function and I joined cast_info2 with title2, cast_info2 with names, titles2 wigth names.
+
+I then took the dplyr? function and inner joined all of the "test sets I made with these three tables."
+
+I examined the inner_joined sets with names, looked at what I did with sql and used a function from my first assignment to try and output 20 names.
+
+I ended up with a huge array that I am certain is not even close to what I got with sql.
+
+In R it basically requires a function taking the SQL data, sorting it in a table (similar to problem 9 from Assignment 1), setting decrease as TRUE and indexing the output to be from [1:20]
+
+```{r,cache=TRUE,eval=FALSE}
+cast_info2<-dbReadTable(imdb_new,"cast_info2")
+name2<-dbReadTable(imdb_new,"name2")
+title2<-dbReadTable(imdb_new,"title2")
+
+library(plyr)
+kind_title<-dbGetQuery(imdb_new, "select kind_id='1' from title2")
+titleid<-dbGetQuery(imdb_new, "select id from title2")
+movie_id<-dbGetQuery(imdb_new, "select movie_id from cast_info2")
+personid<-dbGetQuery(imdb_new, "select person_id from cast_info2")= title2.id
+idname<-dbGetQuery(imdb_new, "select id from name2")
+
+cast_info2<-dbReadTable(imdb_new,"cast_info2")
+name2<-dbReadTable(imdb_new,"name2")
+title2<-dbReadTable(imdb_new,"title2")
+library(plyr)
+test1=join(cast_info2, title2, by = "id", type = "left", match = "all")
+test2=join(cast_info2, name2, by = "id", type = "left", match = "all")
+test3=join(name2, title2, by= "id", type = "left", match = "all")
+
+library(dplyr)
+
+test6=inner_join(test1,test3,by="id")
+test7=inner_join(test2,test3,by="id")
+
+tapply(test7$nr_order, test7$name.y,function(x) sort(table(x), decreasing = T)[1:20])
+
+ 
+ It gave me all the names in alphabetical order 
+
+(How I would have done it):
+Easier way in r:
+
+ 
+top20_1 = sort(table(top20), decreasing = TRUE)[1:20]
+cbind(names(top20_1), as.numeric(top20_1))
+
+```
+
+---
+
+###Q10: Who are the actors that had the most top billing number of movies? For each actor show the years spanned for these movies?###
+
+For this problem, I worked with the idea that for span of time, there would be a max year and mix year. As in earliest year in record, and latest year on record. I incorporated this into my problem, as one of my first arguments I find the max production_year and mix production_year. I used the production_year because in the indexed new data, the only column that we have to find time, or years with is with the production_year column from the title2 table.
+
+In order to find actors I used the usual conditions:
+1)kind_type='1' in order to only find film actors
+
+2) I set columns equal to eaxh other, typically whenever names are needed cast_info2.person_id=name2.id, in addition, the movie_id from the cast_info2 table is equal to the id column from the title2 table, which was used in other problems as well (so similar conditions are needed when trying to find names of film actors)
+
+3)I set role_type.role to actor or actress in order to find only actors and actresses
+
+4) in order to find the first top 3 billing actors, I set nr_order to a condition asking it to only output me numbers between 1 and 3
+
+
+This problem took a while to load.
+
+```{r,cache=TRUE,eval=FALSE}
+
+setwd("E:/Fall 2015/141/Assignment 5")
+library(RSQLite)
+
+imdb_new = dbConnect(SQLite(), dbname = "E:/Fall 2015/141/Assignment 5/lean_imdbpy_2010_idx.db")
+library(RSQLite)
+
+dbGetQuery(imdb_new, "SELECT n.name, COUNT(*), MIN(t.production_year) AS MIN_YEAR, MAX(t.production_year) AS MAX_YEAR FROM title2 t 
+INNER JOIN cast_info2 AS c ON c.movie_id=t.id
+INNER JOIN name2 AS n ON c.person_id=n.id
+INNER JOIN role_type AS r ON c.role_id=r.id
+WHERE kind_id=1 AND (r.role='actor' OR r.role='actress') 
+AND c.nr_order BETWEEN 1 AND 3
+GROUP BY n.name
+ORDER BY COUNT(*) DESC
+LIMIT 20")
+```
+
+*r output for problem 10:*
+
+Basically used the same thing used in problem 9, which is very similar to problems or tasks from Assignment 1 and 2. The only exception here is that the function calls for length of the object, max, and mix, which is ncessary for finding the max year and min eyar, or span of time or years.
+
+Used new database (indexed)
+
+```{r}
+problem10=dbGetQuery(imdb_new, "SELECT n.name, t.production_year FROM title2 AS t 
+INNER JOIN cast_info2 AS c ON c.movie_id=t.id
+INNER JOIN name2 AS n ON c.person_id=n.id
+INNER JOIN role_type AS r ON c.role_id=r.id
+WHERE kind_id=1 AND (r.role='actor' OR r.role='actress') 
+AND c.nr_order BETWEEN 1 AND 3")
+  
+prob_10=tapply(problem10$production_year, problem10$name, function(x) c(length(x), min(x), max(x)))
+
+out = as.data.frame(do.call(rbind, prob_10))
+
+names(out)=c("count","min_year","max_year")
+
+result = out[order(out$count, decreasing = TRUE),]
+result[1:20]
+```
+
+---
+
+### question11: Who are the 10 actors that performed in the most movies within 
+any given year? What are their names, the year they starred in these movies 
+and the names of the movies? ###
+
+Basically same format at previous problems with the exceptopm of no MAX or MON, because no span is looked at, just any year.
+
+Indexed database used here.
+
+```{r,cache=TRUE}
+dbGetQuery(imdb_new, "SELECT n.name, t.production_year AS year, 
+COUNT(*) FROM title2 AS t 
+INNER JOIN cast_info2 AS c 
+ON c.movie_id=t.id
+INNER JOIN name2 AS n 
+ON c.person_id=n.id
+INNER JOIN role_type AS r 
+ON c.role_id=r.id
+WHERE kind_id=1 AND (r.role='actor' OR r.role='actress') 
+GROUP BY t.production_year, n.name
+ORDER BY COUNT(*) DESC
+LIMIT 10")
+```
+
+*in r:*
+
+I tried previously with readTables, but the result was really horendous made my computer make weird noises, so I rather put what I would have done without using readTables...I was confused with ReadTables, because here I would get massiive tables that I extracted, and I would try to bind the tables that I needed based off of my ON arguements, with a plyr or dply function. In the end, I never could get anything close to what I wanetd.
+
+I did try and extract two tables at one with readTables, but that didn't work. I think it would work better if it was not limited to one table at a time.
+
+
+```{r}
+x = dbGetQuery(con, "SELECT n.name, t.production_year AS year, t.title 
+FROM title2 AS t 
+INNER JOIN cast_info2 AS c ON c.movie_id=t.id
+INNER JOIN name2 AS n ON c.person_id=n.id
+INNER JOIN role_type AS r ON c.role_id=r.id
+WHERE kind_id=1 AND (r.role='actor' OR r.role='actress')")
+           
+
+ind = paste(x$year, x$name)
+result = sort(tapply(x$title, ind, length), decreasing=TRUE)[1:10]
+t(t(result))
+```
+
+
+
+-----
+
+###Problem 12: SQL
+
+Only difference with this problem is that I used the `aka_name` table for aliases of actors.
+
+I used the new indexed database here.
+
+Nothing noticeable with the span of years and I have never heard of any of these people, with the exception of Eric Roberts and James Franco. Kind of creepy.
+
+Indexed database used here
+
+```{r}
+dbGetQuery(imdb_new, "SELECT n.name, COUNT(an.name) as count FROM title2 AS t 
+INNER JOIN cast_info2 AS c ON c.movie_id=t.id
+INNER JOIN name2 AS n ON c.person_id=n.id
+INNER JOIN role_type AS r ON c.role_id=r.id
+INNER JOIN aka_name an ON an.person_id=n.id
+WHERE kind_id=1 AND (r.role='actor' OR r.role='actress') 
+GROUP BY n.name
+ORDER BY COUNT(an.name) DESC
+LIMIT 10")
+```
+
+###Problem 12###
+
+in r:
+
+```{r}
+x = dbGetQuery(con, "SELECT n.name, an.name AS alis FROM title2 AS t 
+INNER JOIN cast_info2 AS c ON c.movie_id=t.id
+INNER JOIN name2 AS n ON c.person_id=n.id
+INNER JOIN role_type AS r ON c.role_id=r.id
+INNER JOIN aka_name an ON an.person_id=n.id
+WHERE kind_id=1 AND (r.role='actor' OR r.role='actress')")
+
+out = tapply(x$alis, x$name, length)
+as.data.frame(sort(out, decreasing=TRUE)[1:10], ncol=1)
+```
+
+
+
+
+-----
+
+### Problem 13: graph ###
+
+I did this in SQL at first. I managed to find the actress that I wanted, a Japanese actress from the 1940s-1960s named Setsuko Hara in the old, original database. However I just went by hand and looked up other actors she had worked with. The director she primarily worked with though typically used the same actors in all of his movies, so almost everyone had worked together (everyone who is in the graph did work with her). I found a code from stackoverflow that I used to look up other actors she had worked with, and the actors from this resulted in a sort of a mismatch of a graph.
+
+Even though ALL of the names I got back consisetd of people who ahd worked with Setsuko Hara, only a couple of them actually showed that on the graph. I didn't have time time to fix the edges as suggested by Duncan, so I just drew the lines by hand in my print out.
+
+Sorry.
+
+
+(is there a reason why sometimes a code, I've realsied when I use an alais for a table or column it will run but soemtimes if i use the original table name it will not run...?)
+
+I used a combination (first with old database because the new lean one would not have ehr in it. She stopped working in 1963.)
+
+Procedure:
+
+I found Setsuko Hara in the old_database (original 900mb one)
+I then used a SQL command to search cast_info, name, title, movie_info as a primary key to pick up (in hopes to) pick up other actors and titles of films she ahs worked in (trying to find her co-workers).
+
+I basically did this twice...
+
+
+```{r,eval=FALSE}
+
+imdb_old = dbConnect(SQLite(), dbname = "E:/Fall 2015/141/Assignment 5/imdb_data.txt")
+
+
+getid=dbGetQuery(imdb_old,"SELECT lname,idactors FROM actors WHERE  fname='Setsuko' AND lname ='Hara';")
+
+
+
+#basically same code used for previous problems with the exception of COUNT (* and order by COUNT in order to find the number of times the name shows up in the database)
+
+name.most = dbGetQuery(con, "SELECT n.name, COUNT(*) AS count 
+FROM aka_title AS t 
+INNER JOIN cast_info AS c ON c.movie_id=t.id
+INNER JOIN name AS n ON c.person_id=n.id
+INNER JOIN role_type AS r ON c.role_id=r.id
+WHERE kind_id=1 AND (r.role='actor' OR r.role='actress') 
+GROUP BY n.name
+ORDER BY COUNT(*) DESC")
+
+#find how many times she is in the database:
+
+setsuko.find = sapply(name.most$name, function(x) grep('Setsuko', tolower(x)))
+all.setsuko = do.call(c, setsuko.find)
+all.setsuko[1:10]
+name.most[name.most$name == 'Hara, Setsuko',]
+
+#6681 Hara, Setsuko    77
+
+#finding cast names of people who worked with her
+
+#rank of 1-3 main cast memebrs
+
+foo2 = dbGetQuery(imdb, "SELECT t.title, n.name, c.nr_order FROM title AS t 
+INNER JOIN cast_info AS c ON c.movie_id=t.id
+INNER JOIN name AS n ON c.person_id=n.id
+INNER JOIN role_type AS r ON c.role_id=r.id
+WHERE kind_id=1 AND (r.role='actor' OR r.role='actress') AND 
+c.nr_order BETWEEN 1 AND 3 AND t.production_year >= 1949")
+
+foo = foo2[foo2$nr_order==1 | foo2$name=='Hara, Setsuko',1:2]
+g1.actor = foo$name[foo$title %in% g1.title & foo$name!="Hara, Setsuko"]
+
+#this looks at folks who were in the same movies as her.
+
+#from this i took the names and graphed some of them
+
+getid = dbGetQuery(imdb, 'SELECT name FROM name WHERE name = 'Setsuko';")
+
+library(igraph)
+
+actors = c("Setsuko Hara", "Chishu Ryu","Tatsuo Saito","Sayuri Yoshinaga","Ayako Wakao","Mome Yamaguchi","Junko Sakurada","Keiko Kishi","Shina Iwashita","Yurkio Hoshi","Chiemi Hori","Hisaya Morishige","Tadanobu Asano","Ken Uehara","Masayuki Mori","Jun Eta")
+edges = matrix(actors, , 2, byrow = TRUE)
+
+edges = matrix(list, , 2,ncol=1, byrow = TRUE)
+g = graph.edgelist(edges)
+
+V(g)
+E(g)
+
+
+plot(g)
+```
+
+---
+
