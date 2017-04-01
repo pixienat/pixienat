@@ -1,6 +1,5 @@
 
 
-
 Natalie Marcom's Portfolio
 
 ---------
@@ -12,7 +11,7 @@ My emphasis in statistics has been in data analysis, with a focus on geography. 
 -------
 --------
 
-Examples of my work:
+Examples of my work (python):
 
 
 <a href="http://pixienat.github.io/assignment5_nm_new.html">Text mining</a>
@@ -21,6 +20,15 @@ Examples of my work:
 
 <a href="http://pixienat.github.io/141b_final_part41.html">Volcanic and earthquake activity to determine a correlation between the two</a>
 
+-----
+
+Examples of my work (SQL):
+
+<a href="http://pixienat.github.io/sqlhw.html">SQL IMDB (also using R)</a>
+
+<a href="http://pixienat.github.io/update_problem8.html">SQL and visualizations of data in R</a>
+
+<a href="http://pixienat.github.io/hw6.html">Geoanalysis data (python)</a>
 
 -----
 -----
