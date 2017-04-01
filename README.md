@@ -1,3 +1,4 @@
+ 
 
 
 Natalie Marcom's Portfolio
@@ -20,7 +21,10 @@ Examples of my work (python):
 
 <a href="http://pixienat.github.io/141b_final_part41.html">Volcanic and earthquake activity to determine a correlation between the two</a>
 
+<a href="http://pixienat.github.io/NewMexico.html">GIS data regarding New Mexico's tribal land's proximity to grocery stores</a>
+
 -----
+-------
 
 Examples of my work (SQL):
 
